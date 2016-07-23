@@ -1,0 +1,15 @@
+#!/bin/bash
+source $0.conf
+
+# Read the old_hash new_hash and ref from stdin
+while read oldrev newrev ref; do
+    # Is this the master banch?
+    if [[ $ref =~ .*/master$ ]]; then
+        echo "Received master ref [$newrev]. Deploying to production..."
+        git --work-tree=$DOC_ROOT --git-dir=$GIT_DIR checkout -f
+    else
+        echo "Ref $ref successfully received. Doing nothing. Only the master branch will be deployed on this server."
+    fi
+done
+
+eval $POST_CMD
