@@ -1,15 +1,31 @@
 #!/bin/bash
+
+# Check bash version is >= 4
+if [ $(echo $BASH_VERSION | cut -d . -f 1) -lt 4 ]; then
+    echo "You must be running bash v4 or higher."
+    exit 1
+fi
+
+# Prepare for and then read configuration values
+declare -A BRANCH
 source $0.conf
 
 # Read the old_hash new_hash and ref from stdin
 while read oldrev newrev ref; do
-    # Is this the master banch?
-    if [[ $ref =~ .*/master$ ]]; then
-        echo "Received master ref [$newrev]. Deploying to production..."
-        git --work-tree=$DOC_ROOT --git-dir=$GIT_DIR checkout -f
-    else
-        echo "Ref $ref successfully received. Doing nothing. Only the master branch will be deployed on this server."
-    fi
+    # Is this a branch we care about?
+    for branch in ${!BRANCH[@]}; do
+        if [[ $ref =~ .*/${branch}$ ]]; then
+            echo "Deploying ref [$(echo -n $newrev | cut -c 1-7)] to $branch..."
+            git --work-tree=$DOC_ROOT/${BRANCH[$branch]} --git-dir=$GIT_DIR \
+                checkout -f $branch
+            continue 2
+        fi
+    done
+
+    # We did not encounter a branch to be deployed for this ref
+    echo "Ref $ref successfully received. Doing nothing. Only the master " \
+         "branch will be deployed on this server."
 done
 
+# Run user-specified post-command(s)
 eval $POST_CMD
